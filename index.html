@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Card Game - iOS 26 Theme</title>
+    <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f2f2f7;
+            --glass-bg: rgba(255, 255, 255, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --text-primary: #1c1c1e;
+            --text-secondary: #8e8e93;
+            --accent: #007aff;
+            --success: #34c759;
+            --danger: #ff3b30;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+            padding: 15px;
+        }
+
+        .screen {
+            display: none;
+            width: 100%;
+            max-width: 480px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid var(--glass-border);
+            border-radius: 32px;
+            padding: 30px 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .screen.active {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            letter-spacing: -0.5px;
+        }
+
+        p {
+            color: var(--text-secondary);
+            font-size: 15px;
+            margin-bottom: 25px;
+        }
+
+        .btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 16px;
+            padding: 16px 28px;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            max-width: 280px;
+            margin-bottom: 12px;
+            box-shadow: 0 8px 20px rgba(0, 122, 255, 0.3);
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        .btn:active {
+            transform: scale(0.96);
+            opacity: 0.9;
+        }
+
+        .btn-secondary {
+            background: rgba(120, 120, 128, 0.12);
+            color: var(--accent);
+            box-shadow: none;
+        }
+
+        /* Game Header */
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 420px;
+            margin-bottom: 20px;
+            padding: 0 10px;
+        }
+
+        .stat-badge {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 8px 16px;
+            border-radius: 14px;
+            font-weight: 600;
+            font-size: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+
+        .timer.warning {
+            color: var(--danger);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+            100% { transform: scale(1); }
+        }
+
+        /* Grid 4x4 */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            width: 100%;
+            max-width: 420px;
+            aspect-ratio: 3/4;
+        }
+
+        .card {
+            background-color: transparent;
+            perspective: 1000px;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.4s cubic-bezier(0.4, 0.2, 0.2, 1);
+            transform-style: preserve-3d;
+            border-radius: 16px;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+        }
+
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        /* Thẻ đã ghép đúng: Giữ nguyên lật, không ẩn đi, có viền xanh lá neon */
+        .card.matched .card-inner {
+            transform: rotateY(180deg);
+            box-shadow: 0 0 15px rgba(52, 199, 89, 0.7);
+        }
+
+        .card.matched .card-front {
+            border: 3.5px solid var(--success) !important;
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .card-back {
+            background: #fff;
+        }
+
+        .card-back img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .card-front {
+            background: #ffffff;
+            transform: rotateY(180deg);
+            border: 2px solid rgba(0,0,0,0.05);
+        }
+
+        .card-front img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Input ghi danh */
+        input[type="text"] {
+            width: 100%;
+            padding: 14px 18px;
+            border-radius: 14px;
+            border: 1px solid rgba(120, 120, 128, 0.3);
+            background: rgba(255, 255, 255, 0.9);
+            font-size: 16px;
+            margin-bottom: 15px;
+            outline: none;
+            text-align: center;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+        }
+
+        /* Bảng xếp hạng */
+        .leaderboard-list {
+            list-style: none;
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            text-align: left;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.5);
+            padding: 10px;
+        }
+
+        .leaderboard-list li {
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+        }
+
+        .leaderboard-list li:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- MÀN HÌNH CHÀO MỪNG -->
+    <div id="welcome-screen" class="screen active">
+        <h1>Trò Chơi Lật Thẻ</h1>
+        <p>Thử thách trí nhớ của bạn trong vòng 36 giây với lưới thẻ 4x4 chuẩn iOS 26!</p>
+        <button class="btn" onclick="startGame()">Bắt Đầu Ngay</button>
+        <button class="btn btn-secondary" onclick="showLeaderboardScreen()">Bảng Xếp Hạng</button>
+    </div>
+
+    <!-- MÀN HÌNH CHƠI GAME -->
+    <div id="game-screen" class="screen">
+        <div class="game-header">
+            <div class="stat-badge">⏳ <span id="timer" class="timer">36s</span></div>
+            <div class="stat-badge">🎯 <span id="matches">0</span>/8</div>
+        </div>
+        <div class="card-grid" id="card-grid"></div>
+    </div>
+
+    <!-- MÀN HÌNH THẮNG / GHI DANH -->
+    <div id="win-screen" class="screen">
+        <h1>🎉 Chúc Mừng!</h1>
+        <p id="win-message">Bạn đã hoàn thành xuất sắc thử thách!</p>
+        <input type="text" id="player-name" placeholder="Nhập tên của bạn để ghi danh..." maxlength="20">
+        <button class="btn" onclick="saveScore()">Lưu Điểm & Tiếp Tục</button>
+        <button class="btn btn-secondary" onclick="returnToHome()">Về Trang Chủ</button>
+    </div>
+
+    <!-- MÀN HÌNH THUA -->
+    <div id="gameover-screen" class="screen">
+        <h1>⏰ Hết Giờ!</h1>
+        <p>Rất tiếc, bạn chưa hoàn thành kịp thời gian 36 giây.</p>
+        <button class="btn" onclick="startGame()">Chơi Lại</button>
+        <button class="btn btn-secondary" onclick="returnToHome()">Về Trang Chủ</button>
+    </div>
+
+    <!-- MÀN HÌNH BẢNG XẾP HẠNG -->
+    <div id="leaderboard-screen" class="screen">
+        <h1>🏆 Bảng Xếp Hạng</h1>
+        <ul id="leaderboard-list" class="leaderboard-list">
+            <li style="text-align: center; color: var(--text-secondary);">Chưa có dữ liệu</li>
+        </ul>
+        <button class="btn btn-secondary" onclick="returnToHome()">Quay Lại</button>
+    </div>
+
+    <script>
+        // 8 ảnh mặt trước (chân dung)
+        const frontImages = [
+            "IMG20260911165733.jpg",
+            "2026_09_11_17_51_24_IMG_9302_EDIT.jpg",
+            "2026_09_11_12_04_10_IMG_9110_EDIT.jpg",
+            "2026_09_11_12_05_11_IMG_9119_EDIT.jpg",
+            "2026_09_11_12_12_53_IMG_9147_EDIT.jpg",
+            "2026_09_11_12_18_20_IMG_9180.jpg",
+            "2026_09_12_13_30_14_IMG_9390_EDIT.jpg",
+            "2026_09_12_16_55_09_IMG_9440_EDIT.jpg"
+        ];
+
+        // Ảnh mặt sau (ngôi đền cổ)
+        const backImage = "IMG20260911115036.jpg";
+
+        let cards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let timeLeft = 36;
+        let timerInterval = null;
+        let isPlaying = false;
+        let audioCtx = null;
+
+        // Âm thanh giả lập bằng Web Audio API
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            try {
+                initAudio();
+                if (!audioCtx) return;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'flip') {
+                    osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.08);
+                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.08);
+                } else if (type === 'match') {
+                    osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+                    osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); // E5
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.3);
+                } else if (type === 'win') {
+                    [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+                        const o = audioCtx.createOscillator();
+                        const g = audioCtx.createGain();
+                        o.connect(g);
+                        g.connect(audioCtx.destination);
+                        o.frequency.value = freq;
+                        g.gain.setValueAtTime(0.15, audioCtx.currentTime + idx * 0.1);
+                        g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + idx * 0.1 + 0.3);
+                        o.start(audioCtx.currentTime + idx * 0.1);
+                        o.stop(audioCtx.currentTime + idx * 0.1 + 0.3);
+                    });
+                }
+            } catch (e) {
+                console.log("Audio not allowed yet");
+            }
+        }
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function startGame() {
+            initAudio();
+            showScreen('game-screen');
+            resetGameVariables();
+            buildBoard();
+            startTimer();
+        }
+
+        function resetGameVariables() {
+            clearInterval(timerInterval);
+            timeLeft = 36;
+            matchedPairs = 0;
+            flippedCards = [];
+            isPlaying = true;
+            document.getElementById('timer').textContent = timeLeft + 's';
+            document.getElementById('timer').classList.remove('warning');
+            document.getElementById('matches').textContent = matchedPairs;
+        }
+
+        function buildBoard() {
+            const grid = document.getElementById('card-grid');
+            grid.innerHTML = '';
+
+            // Tạo cặp thẻ (8 cặp = 16 thẻ)
+            let deck = [...frontImages, ...frontImages];
+            // Xáo trộn ngẫu nhiên
+            deck.sort(() => Math.random() - 0.5);
+
+            deck.forEach((imgSrc, index) => {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.dataset.image = imgSrc;
+
+                card.innerHTML = `
+                    <div class="card-inner">
+                        <div class="card-back">
+                            <img src="${backImage}" alt="Back">
+                        </div>
+                        <div class="card-front">
+                            <img src="${imgSrc}" alt="Front">
+                        </div>
+                    </div>
+                `;
+
+                card.addEventListener('click', () => handleCardClick(card));
+                grid.appendChild(card);
+            });
+        }
+
+        function handleCardClick(card) {
+            if (!isPlaying) return;
+            // Không cho bấm nếu thẻ đã mở hoặc đã khớp hoặc đang lật chính nó
+            if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
+            if (flippedCards.length >= 2) return;
+
+            playSound('flip');
+            card.classList.add('flipped');
+            flippedCards.push(card);
+
+            if (flippedCards.length === 2) {
+                const [card1, card2] = flippedCards;
+                const img1 = card1.dataset.image;
+                const img2 = card2.dataset.image;
+
+                if (img1 === img2) {
+                    // Khớp cặp -> Giữ nguyên mặt trước, thêm hiệu ứng viền xanh lá neon
+                    playSound('match');
+                    card1.classList.add('matched');
+                    card2.classList.add('matched');
+                    matchedPairs++;
+                    document.getElementById('matches').textContent = matchedPairs;
+                    flippedCards = [];
+
+                    if (matchedPairs === 8) {
+                        endGame(true);
+                    }
+                } else {
+                    // Không khớp -> Úp lại sau một khoảng thời gian ngắn, cho phép lật tốc độ cao
+                    setTimeout(() => {
+                        card1.classList.remove('flipped');
+                        card2.classList.remove('flipped');
+                    }, 600);
+                    flippedCards = [];
+                }
+            }
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                const timerEl = document.getElementById('timer');
+                timerEl.textContent = timeLeft + 's';
+
+                if (timeLeft <= 10) {
+                    timerEl.classList.add('warning');
+                }
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    endGame(false);
+                }
+            }, 1000);
+        }
+
+        function endGame(isWin) {
+            isPlaying = false;
+            clearInterval(timerInterval);
+            if (isWin) {
+                playSound('win');
+                document.getElementById('win-message').textContent = `Bạn đã chiến thắng với thời gian còn lại là ${timeLeft} giây!`;
+                showScreen('win-screen');
+            } else {
+                showScreen('gameover-screen');
+            }
+        }
+
+        function saveScore() {
+            const nameInput = document.getElementById('player-name');
+            const name = nameInput.value.trim() || "Ẩn danh";
+            const scoreData = { name: name, time: 36 - timeLeft, date: new Date().toLocaleDateString() };
+
+            let leaderboard = JSON.parse(localStorage.getItem('memory_leaderboard') || '[]');
+            leaderboard.push(scoreData);
+            leaderboard.sort((a, b) => a.time - b.time); // Sắp xếp theo thời gian hoàn thành nhanh nhất
+            localStorage.setItem('memory_leaderboard', JSON.stringify(leaderboard));
+
+            nameInput.value = '';
+            showLeaderboardScreen();
+        }
+
+        function showLeaderboardScreen() {
+            showScreen('leaderboard-screen');
+            const listEl = document.getElementById('leaderboard-list');
+            let leaderboard = JSON.parse(localStorage.getItem('memory_leaderboard') || '[]');
+
+            if (leaderboard.length === 0) {
+                listEl.innerHTML = `<li style="text-align: center; color: var(--text-secondary);">Chưa có kỷ lục nào</li>`;
+                return;
+            }
+
+            listEl.innerHTML = leaderboard.slice(0, 10).map((item, index) => `
+                <li>
+                    <span>#${index + 1} <strong>${item.name}</strong></span>
+                    <span><strong>${item.time}s</strong></span>
+                </li>
+            `).join('');
+        }
+
+        function returnToHome() {
+            showScreen('welcome-screen');
+        }
+    </script>
+</body>
+</html>
